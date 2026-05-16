@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 
 export default function ManageExperiments() {
@@ -6,6 +7,8 @@ export default function ManageExperiments() {
   const [form, setForm] = useState({ title: '', thumbnail_url: '', video_url: '', thumbnail_file_id: '' });
   const [editingId, setEditingId] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   useEffect(() => {
     fetchExperiments();
@@ -17,6 +20,7 @@ export default function ManageExperiments() {
   };
 
   const handleFileUpload = async (file) => {
+    if (!file) return;
     const formData = new FormData();
     formData.append('file', file);
     setUploading(true);
@@ -48,6 +52,7 @@ export default function ManageExperiments() {
     }
     setForm({ title: '', thumbnail_url: '', video_url: '', thumbnail_file_id: '' });
     setEditingId(null);
+    setIsFormOpen(false);
     fetchExperiments();
   };
 
@@ -59,6 +64,7 @@ export default function ManageExperiments() {
       thumbnail_file_id: exp.thumbnail_file_id,
     });
     setEditingId(exp.id);
+    setIsFormOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -68,79 +74,226 @@ export default function ManageExperiments() {
     }
   };
 
+  const filteredExperiments = experiments.filter(exp =>
+    exp.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Manage Experiments</h1>
-
-      <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-8">
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Title</label>
-          <input
-            type="text"
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Thumbnail Image</label>
-          <input
-            type="file"
-            onChange={(e) => handleFileUpload(e.target.files[0])}
-            className="w-full"
-            accept="image/*"
-          />
-          {form.thumbnail_url && (
-            <div className="mt-2">
-              <img src={form.thumbnail_url} alt="preview" className="h-20" />
-            </div>
-          )}
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">YouTube Video URL</label>
-          <input
-            type="url"
-            value={form.video_url}
-            onChange={(e) => setForm({ ...form, video_url: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={uploading}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pb-12">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
         >
-          {editingId ? 'Update' : 'Create'}
-        </button>
-        {editingId && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingId(null);
-              setForm({ title: '', thumbnail_url: '', video_url: '', thumbnail_file_id: '' });
-            }}
-            className="ml-2 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-          >
-            Cancel
-          </button>
-        )}
-      </form>
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+            Manage Experiments
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Add, edit, or remove experiment videos
+          </p>
+        </motion.div>
 
-      <div className="bg-white rounded shadow overflow-hidden">
-        {experiments.map(exp => (
-          <div key={exp.id} className="p-4 border-b flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <img src={exp.thumbnail_url} alt="" className="h-12 w-12 object-cover rounded" />
-              <span className="font-medium">{exp.title}</span>
-            </div>
-            <div>
-              <button onClick={() => handleEdit(exp)} className="text-blue-600 mr-2">Edit</button>
-              <button onClick={() => handleDelete(exp.id)} className="text-red-600">Delete</button>
-            </div>
+        {/* Add New Button */}
+        <motion.button
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setIsFormOpen(!isFormOpen)}
+          className="mb-6 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+        >
+          <span>{isFormOpen ? '−' : '+'}</span>
+          <span>{isFormOpen ? 'Close Form' : 'Add New Experiment'}</span>
+        </motion.button>
+
+        {/* Form Modal/Card */}
+        <AnimatePresence>
+          {isFormOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden mb-8"
+            >
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 border border-gray-100 dark:border-gray-700">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
+                  {editingId ? 'Edit Experiment' : 'Create New Experiment'}
+                </h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Title Field */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Experiment Title
+                    </label>
+                    <input
+                      type="text"
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="e.g., Ohm's Law Experiment"
+                      required
+                    />
+                  </div>
+
+                  {/* Thumbnail Upload */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Thumbnail Image
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <label className={`cursor-pointer px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <span className="text-sm">📁 Choose File</span>
+                        <input
+                          type="file"
+                          onChange={(e) => handleFileUpload(e.target.files[0])}
+                          className="hidden"
+                          accept="image/*"
+                          disabled={uploading}
+                        />
+                      </label>
+                      {uploading && (
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-sm text-gray-500">Uploading...</span>
+                        </div>
+                      )}
+                    </div>
+                    {form.thumbnail_url && (
+                      <div className="mt-3">
+                        <img src={form.thumbnail_url} alt="preview" className="h-24 w-32 object-cover rounded-lg shadow-md" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Video URL Field */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      YouTube Video URL
+                    </label>
+                    <input
+                      type="url"
+                      value={form.video_url}
+                      onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      required
+                    />
+                  </div>
+
+                  {/* Form Actions */}
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="submit"
+                      disabled={uploading}
+                      className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50"
+                    >
+                      {editingId ? 'Update Experiment' : 'Create Experiment'}
+                    </button>
+                    {editingId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(null);
+                          setForm({ title: '', thumbnail_url: '', video_url: '', thumbnail_file_id: '' });
+                        }}
+                        className="px-6 py-2 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition-all"
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="🔍 Search experiments..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-3 pl-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            />
+            <span className="absolute left-3 top-3 text-gray-400">🔍</span>
           </div>
-        ))}
+        </div>
+
+        {/* Experiments Grid */}
+        {filteredExperiments.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl"
+          >
+            <p className="text-gray-500 dark:text-gray-400">No experiments found</p>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredExperiments.map((exp, index) => (
+              <motion.div
+                key={exp.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ y: -5 }}
+                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300"
+              >
+                {/* Thumbnail */}
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src={exp.thumbnail_url}
+                    alt={exp.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="absolute bottom-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                    <span>▶</span> YouTube
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-800 dark:text-white mb-2 line-clamp-1">
+                    {exp.title}
+                  </h3>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                      onClick={() => handleEdit(exp)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 transition-colors"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(exp.id)}
+                      className="text-red-600 hover:text-red-700 text-sm font-medium flex items-center gap-1 transition-colors"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Stats */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-8 text-center"
+        >
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Total Experiments: {experiments.length} | Showing: {filteredExperiments.length}
+          </p>
+        </motion.div>
       </div>
     </div>
   );
